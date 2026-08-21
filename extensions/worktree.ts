@@ -71,6 +71,7 @@ async function continueBranch(
 	ctx: ExtensionCommandContext,
 	inspection: Inspection,
 	intent: string,
+	preferredBranch?: string,
 ): Promise<void> {
 	const choices = existingChoices(inspection);
 	if (choices.length === 0) {
@@ -78,11 +79,17 @@ async function continueBranch(
 		return;
 	}
 
-	const labels = choices.map((choice) => `${choice.branch} (${choice.source === "local" ? "local" : "origin"})`);
-	const selected = await ctx.ui.select("Branch to continue", labels);
-	if (!selected) return;
-	const choice = choices[labels.indexOf(selected)];
-	if (!choice) throw new Error("Selected branch could not be resolved.");
+	let choice: ExistingChoice | undefined;
+	if (preferredBranch) {
+		choice = choices.find((candidate) => candidate.branch === preferredBranch);
+		if (!choice) throw new Error(`Branch ${preferredBranch} is no longer available to continue.`);
+	} else {
+		const labels = choices.map((candidate) => `${candidate.branch} (${candidate.source === "local" ? "local" : "origin"})`);
+		const selected = await ctx.ui.select("Branch to continue", labels);
+		if (!selected) return;
+		choice = choices[labels.indexOf(selected)];
+		if (!choice) throw new Error("Selected branch could not be resolved.");
+	}
 
 	const occupied = inspection.worktrees.find((worktree) => worktree.branch === choice.branch);
 	if (occupied) {
@@ -129,20 +136,22 @@ async function createBranch(
 	inspection: Inspection,
 	intent: string,
 ): Promise<void> {
-	const suggestion = branchSuggestion(intent);
-	const branchInput = await ctx.ui.input("New branch name", suggestion);
-	const branch = branchInput?.trim();
+	const generatedBranch = uniqueBranchSuggestion(intent, inspection);
+	const branch = await editField(ctx, "New branch name", generatedBranch);
 	if (!branch) return;
 	await validateBranch(pi, ctx, branch);
 
 	const latest = await inspect(pi, ctx);
 	if (latest.localBranches.includes(branch) || latest.remoteBranches.includes(branch)) {
-		throw new Error(`Branch ${branch} already exists. Choose “Continue an existing branch” instead.`);
+		await continueBranch(pi, ctx, latest, intent, branch);
+		return;
 	}
 
 	const defaultBase = latest.defaultBranch ? `origin/${latest.defaultBranch}` : "";
-	const baseInput = await ctx.ui.input("Base branch or commit", defaultBase || "Select an explicit base");
-	const base = baseInput?.trim();
+	if (!defaultBase) {
+		ctx.ui.notify("origin/HEAD is unavailable; enter an explicit base branch or commit.", "warning");
+	}
+	const base = await editField(ctx, "Base branch or commit", defaultBase);
 	if (!base) return;
 	await runGit(pi, ctx, ["rev-parse", "--verify", "--quiet", "--end-of-options", `${base}^{commit}`]);
 
@@ -168,9 +177,23 @@ async function chooseTarget(
 ): Promise<string | undefined> {
 	const container = resolve(dirname(inspection.repository), `${basename(inspection.repository)}.worktrees`);
 	const suggested = resolve(container, safeComponent(branch));
-	const input = await ctx.ui.input("Worktree path", suggested);
-	if (!input?.trim()) return undefined;
-	return resolve(ctx.cwd, input.trim());
+	const input = await editField(ctx, "Worktree path", suggested);
+	if (!input) return undefined;
+	return resolve(ctx.cwd, input);
+}
+
+async function editField(
+	ctx: ExtensionCommandContext,
+	title: string,
+	prefill: string,
+): Promise<string | undefined> {
+	const value = await ctx.ui.editor(title, prefill);
+	const trimmed = value?.trim();
+	if (!trimmed) return undefined;
+	if (trimmed.includes("\n") || trimmed.includes("\r")) {
+		throw new Error(`${title} must be a single line.`);
+	}
+	return trimmed;
 }
 
 async function ensureTargetAvailable(
@@ -365,8 +388,30 @@ function safeComponent(value: string): string {
 	return value.replace(/[\\/]+/g, "-").replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^[._-]+|[._-]+$/g, "") || "change";
 }
 
+const BRANCH_FILLER_WORDS = new Set([
+	"a", "an", "and", "as", "at", "be", "based", "by", "do", "for", "from", "i", "in", "is", "it",
+	"make", "of", "on", "please", "should", "that", "the", "this", "to", "use", "want", "with", "would",
+]);
+
 function branchSuggestion(intent: string): string {
-	return safeComponent(intent.toLowerCase());
+	const words = intent
+		.toLowerCase()
+		.replace(/[’']/g, "")
+		.split(/[^a-z0-9]+/)
+		.filter((word) => word.length > 1 && !BRANCH_FILLER_WORDS.has(word))
+		.slice(0, 5);
+	const concise = safeComponent(words.join("-"));
+	return concise.slice(0, 48).replace(/[._-]+$/g, "") || "change";
+}
+
+function uniqueBranchSuggestion(intent: string, inspection: Inspection): string {
+	const base = branchSuggestion(intent);
+	const existing = new Set([...inspection.localBranches, ...inspection.remoteBranches]);
+	if (!existing.has(base)) return base;
+	for (let suffix = 2; ; suffix++) {
+		const candidate = `${base}-${suffix}`;
+		if (!existing.has(candidate)) return candidate;
+	}
 }
 
 function formatGit(args: string[]): string {
