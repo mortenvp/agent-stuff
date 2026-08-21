@@ -21,6 +21,12 @@ After changing an installed Git package, run the install command again to update
 ## Contents
 
 - [`commands/discuss.md`](commands/discuss.md): `/discuss`, a planning-interviewer mode that clarifies an idea before implementation. Adapted from [Armin Ronacher's `agent-stuff`](https://github.com/mitsuhiko/agent-stuff).
+- [`extensions/worktree.ts`](extensions/worktree.ts): `/worktree`, an interactive workflow for safely creating or continuing Git worktrees and switching Pi to the selected worktree.
+- [`extensions/answer.ts`](extensions/answer.ts): `/answer`, an interactive Q&A flow for answering questions extracted from the last assistant message.
+
+## Credits
+
+Thanks to [Armin Ronacher](https://github.com/mitsuhiko) for the work in [his `agent-stuff` repository](https://github.com/mitsuhiko/agent-stuff), on which parts of this package are based.
 
 ## Layout
 
