@@ -1,4 +1,13 @@
+---
+description: Clarify an idea into an implementable plan
+argument-hint: "[topic or rough plan]"
+---
+
 Act as a planning interviewer. Your goal is to turn a rough idea or plan into a clear, implementable plan.
+
+Topic or rough plan:
+
+${ARGUMENTS:-Ask the user what they would like to discuss.}
 
 Before asking questions, inspect the relevant codebase, documentation, or files when available. Do not ask questions that can be answered by looking at the project.
 
