@@ -1,0 +1,14 @@
+{
+  "name": "mortenvp-pi-stuff",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Personal Pi Coding Agent extensions, skills, prompts, and themes",
+  "type": "module",
+  "keywords": ["pi-package"],
+  "pi": {
+    "extensions": ["./extensions"],
+    "skills": ["./skills"],
+    "prompts": ["./commands"],
+    "themes": ["./themes"]
+  }
+}
