@@ -23,7 +23,18 @@ After changing an installed Git package, run the install command again to update
 - [`commands/discuss.md`](commands/discuss.md): `/discuss`, a planning-interviewer mode that clarifies an idea before implementation. Adapted from [Armin Ronacher's `agent-stuff`](https://github.com/mitsuhiko/agent-stuff).
 - [`extensions/worktree.ts`](extensions/worktree.ts): `/worktree`, an interactive workflow for safely creating or continuing Git worktrees and switching Pi to the selected worktree. New branches get editable defaults for a concise branch name, the `origin/HEAD` base, and the worktree path.
 - [`extensions/answer.ts`](extensions/answer.ts): `/answer`, an interactive Q&A flow for answering questions extracted from the last assistant message.
+- [`extensions/review.ts`](extensions/review.ts): `/review` and `/end-review`, an isolated conversation-branch workflow for reviewing uncommitted changes, the current branch against a base branch, commits, pull requests, or folder snapshots. Copied from [Armin Ronacher's review extension](https://github.com/mitsuhiko/agent-stuff/blob/main/extensions/review.ts) under its [Apache 2.0 license](licenses/mitsuhiko-agent-stuff-APACHE-2.0.txt).
 - [`extensions/merge-pr.ts`](extensions/merge-pr.ts): `/merge-pr [PR-number-or-URL]`, a guarded workflow that monitors an existing pull request and squash-merges its confirmed head SHA only after CI passes.
+
+## Review the current branch
+
+From a feature-branch worktree, run:
+
+```text
+/review branch main
+```
+
+Replace `main` with the branch you intend to merge into. Choose **Empty branch** to perform the review in an isolated Pi conversation branch; this does not create or switch Git branches or worktrees. Finish with `/end-review` to return, summarize the findings, or queue fixes. Running `/review` without arguments opens an interactive target selector.
 
 ## Merge a pull request
 
